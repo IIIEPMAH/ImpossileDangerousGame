@@ -1,56 +1,56 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace ImpossileDangerousGame
 {
-	public class ScenarioStep 
-	{
+    public class HistoryItem {
 		public string Id { get; }
-		public string Text { get; }
-		public List<string> Variences { get; }
+		public int Num { get; }
 
-		public ScenarioStep(string text, List<string> variences, string id) 
+		public HistoryItem(string id, int num) 
 		{
-			Text = text; 	
-			Variences = variences;
 			Id = id;
+			Num = num;
 		}
 	}
 
-	public class ScenarioTransition 
+	public class Var
 	{
-		public List<Tuple<string, int>> Src { get; }
-		public string Dest { get; }
+		public string Text { get; }
+		public List<string> Next { get; }
 
-		public ScenarioTransition(List<Tuple<string, int>> src, string dest)
+		public Var(string text, List<string> next)
 		{
-			Src = src;
-			Dest = dest;
+			Text = text;
+			Next = next;        
+		}
+	}
+
+	public class ScenarioStep
+	{
+		public List<HistoryItem> Prev { get; }
+		public string Id { get; }
+		public string Text { get; }
+		public List<Var> Vars { get; }
+
+		public ScenarioStep(List<HistoryItem> prev, string id, string text, List<Var> vars)
+		{
+			Prev = prev;
+			Id = id;
+			Text = text;
+			Vars = vars;
 		}
 	}
 
 	public class Scenario
 	{
 		public List<ScenarioStep> Steps { get; }
-		public List<ScenarioTransition> Transitions { get; }
 
-		public Scenario (List<ScenarioStep> steps, List<ScenarioTransition> transitions)
+		public Scenario (List<ScenarioStep> steps)
 		{
-			Steps = steps;
-			Transitions = transitions;
-
-			transitions.Sort (Comparer<ScenarioTransition>.Create ((ScenarioTransition t1, ScenarioTransition t2) => {
-				if (t1.Src.Count > t2.Src.Count) {
-					return -1;
-				} else if (t1.Src.Count == t2.Src.Count) {
-					return 0;
-				} else {
-					return 1;
-				}
-			}));
+			Steps = steps;          
 		}
 
-		public ScenarioStep findStep(string id) {
+		public ScenarioStep FindStep(string id) {
 			return Steps.Find (step => step.Id == id);
 		}
 	}

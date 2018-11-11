@@ -1,63 +1,58 @@
-﻿using System;
+﻿using System.IO;
+using System.Json;
+using System.Linq;
 using System.Collections.Generic;
-using System.IO;
 
 namespace ImpossileDangerousGame
 {
-	public class ScenarioFilesParser
-	{
-		public static List<ScenarioStep> ParseSteps(string filename) {
-			List<ScenarioStep> steps = new List<ScenarioStep> ();
-			using (StreamReader reader = new StreamReader (filename)) {
-				while (!reader.EndOfStream) {
-					string id = reader.ReadLine ();
+    public class ScenarioFilesParser
+    {      
+        private static HistoryItem parseItem(JsonObject obj)
+        {
+            JsonValue id;
+            JsonValue num;
+            obj.TryGetValue("id", out id);
+            obj.TryGetValue("num", out num);
+            return new HistoryItem((string)id, (int)num);
+        }
+        
+        private static Var parseVar(JsonObject obj)
+        {
+            JsonValue text;
+            JsonValue next;
+            obj.TryGetValue("text", out text);
+            obj.TryGetValue("next", out next);
+            List<string> nextList = ((JsonArray)next).Select(s => (string)s).ToList();           
+            return new Var((string)text, nextList);
+        }
 
-					int textNum = Convert.ToInt32 (reader.ReadLine (), 10);
-					string text = "";
-					for (int i = 0; i < textNum; i++) {
-						text += reader.ReadLine ();
-						text += "\n";
-					}
-
-					int varNum = Convert.ToInt32 (reader.ReadLine (), 10);
-					List<string> vars = new List<string> ();
-					for (int i = 0; i < varNum; i++) {
-						vars.Add (reader.ReadLine ());
-					}
-
-					steps.Add (new ScenarioStep (text, vars, id));
-				}
-			}
-
-			return steps;
-		}
-
-		public static List<ScenarioTransition> ParseTransitions(string filename) {
-			List<ScenarioTransition> vars = new List<ScenarioTransition> ();
-			using (StreamReader reader = new StreamReader (filename)) {
-				while (!reader.EndOfStream) {
-					string line = reader.ReadLine ();
-					string[] parts = line.Split (',');
-					if (parts.Length % 2 != 1) {
-						throw new FormatException ();
-					}
-					List<Tuple<string, int>> pairs = new List<Tuple<string, int>>(); 
-					for (int i = 0; i < parts.Length / 2; i++) {
-						string id = parts [2 * i];
-						int v = Convert.ToInt32 (parts [2 * i + 1], 10);
-						pairs.Add (Tuple.Create (id, v));
-					}
-
-					vars.Add (new ScenarioTransition (pairs, parts [parts.Length - 1]));
-				}
-			}
-
-			return vars;
-		}
-
-		public static Scenario ParseScenario(string stepsFile, string transitionsFile) {
-			return new Scenario (ParseSteps (stepsFile), ParseTransitions (transitionsFile));
-		}
-	}
+        private static ScenarioStep parseStep(JsonObject obj)
+        {
+            JsonValue prev;
+            JsonValue id;
+            JsonValue text;
+            JsonValue vars;
+            obj.TryGetValue("prev", out prev);
+            obj.TryGetValue("id", out id);
+            obj.TryGetValue("text", out text);
+            obj.TryGetValue("vars", out vars);
+            List<HistoryItem> prevList;
+            if (prev != null) {
+                prevList = ((JsonArray)prev).Select(o => parseItem((JsonObject)o)).ToList();
+            }
+            else {
+                prevList = new List<HistoryItem>();
+            }
+            List<Var> varList = ((JsonArray)vars).Select(v => parseVar((JsonObject)v)).ToList();
+            return new ScenarioStep(prevList, (string)id, (string)text, varList);
+        }
+        
+        public static Scenario ParseScenario(string stepsFile) 
+        {
+            JsonValue steps = JsonValue.Parse(File.ReadAllText(stepsFile));
+            List<ScenarioStep> stepsList = ((JsonArray)steps).Select(s => parseStep((JsonObject)s)).ToList();
+            return new Scenario(stepsList);
+        }
+    }
 }
 
